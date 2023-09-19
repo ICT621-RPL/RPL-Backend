@@ -8,6 +8,7 @@ A Flask application for performing CRUD (Create, Read, Update, Delete) operation
 
 ```bash
 pip install flask flask_sqlalchemy flask_marshmallow marshmallow-sqlalchemy mysqlclient
+```
 
 ### 2. Application Structure:
 
@@ -18,6 +19,7 @@ pip install flask flask_sqlalchemy flask_marshmallow marshmallow-sqlalchemy mysq
 |   |-- models.py
 |   |-- views.py
 |-- run.py
+```
 
 ### 3. Configuration:
 
@@ -29,4 +31,4 @@ To run the application:
 
 ```bash
 python run.py
-
+```
