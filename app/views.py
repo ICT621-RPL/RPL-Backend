@@ -12,16 +12,26 @@ experiences_schema = ExperienceSchema(many=True)
 
 @app.route('/experience', methods=['POST'])
 def add_experience():
-    studentId = request.json['studentId']
-    jobTitle = request.json['jobTitle']
-    fromDate = request.json['fromDate']
-    toDate = request.json['toDate']
-    experience = request.json['experience']
+    experiences_data = request.json
+    new_experiences = []
 
-    new_experience = Experience(studentId, jobTitle, fromDate, toDate, experience)
-    db.session.add(new_experience)
+    for exp_data in experiences_data:
+        studentId = exp_data['studentId']
+        jobTitle = exp_data['jobTitle']
+        fromMonth = exp_data['from_month']
+        fromYear = exp_data['from_year']
+        toMonth = exp_data['to_month']
+        toYear = exp_data['to_year']
+        company = exp_data['company']
+        country = exp_data['country']
+        description = exp_data['description']
+
+        new_experience = Experience(studentId, jobTitle, fromMonth, fromYear, toMonth, toYear, company, country, description)
+        db.session.add(new_experience)
+        new_experiences.append(new_experience)
+
     db.session.commit()
-    return experience_schema.jsonify(new_experience)
+    return experiences_schema.jsonify(new_experiences)
 
 @app.route('/experience', methods=['GET'])
 def get_experiences():
@@ -45,9 +55,13 @@ def update_experience(id):
     else:
         experience.student_id = request.json.get('studentId', experience.student_id)
         experience.job_title = request.json.get('jobTitle', experience.job_title)
-        experience.from_date = request.json.get('fromDate', experience.from_date)
-        experience.to_date = request.json.get('toDate', experience.to_date)
-        experience.experience = request.json.get('experience', experience.experience)
+        experience.from_month = request.json.get('from_month', experience.from_month)
+        experience.from_year = request.json.get('from_year', experience.from_year)
+        experience.to_month = request.json.get('to_month', experience.to_month)
+        experience.to_year = request.json.get('to_year', experience.to_year)
+        experience.company = request.json.get('company', experience.company)
+        experience.country = request.json.get('country', experience.country)
+        experience.description = request.json.get('experience', experience.description)
 
         db.session.commit()
         return experience_schema.jsonify(experience)
