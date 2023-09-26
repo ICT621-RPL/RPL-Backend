@@ -10,13 +10,13 @@ class ExperienceSchema(ma.SQLAlchemyAutoSchema):
 experience_schema = ExperienceSchema()
 experiences_schema = ExperienceSchema(many=True)
 
-@app.route('/experience', methods=['POST'])
-def add_experience():
+@app.route('/experiences', methods=['POST'])
+def add_experiences():
     experiences_data = request.json
     new_experiences = []
 
     for exp_data in experiences_data:
-        studentId = exp_data['studentId']
+        studentId = exp_data.get('studentId', None)
         jobTitle = exp_data['jobTitle']
         fromMonth = exp_data['from_month']
         fromYear = exp_data['from_year']
@@ -32,6 +32,22 @@ def add_experience():
 
     db.session.commit()
     return experiences_schema.jsonify(new_experiences)
+
+@app.route('/experience', methods=['POST'])
+def add_experience():
+    studentId = request.json['studentId']
+    jobTitle = request.json['jobTitle']
+    fromMonth = request.json['from_month']
+    fromYear = request.json['from_year']
+    toMonth = request.json['to_month']
+    toYear = request.json['to_year']
+    company = request.json['company']
+    country = request.json['country']
+    description = request.json['description']
+    new_experience = Experience(studentId, jobTitle, fromMonth, fromYear, toMonth, toYear, company, country, description)
+    db.session.add(new_experience)
+    db.session.commit()
+    return experience_schema.jsonify(new_experience)
 
 @app.route('/experience', methods=['GET'])
 def get_experiences():
