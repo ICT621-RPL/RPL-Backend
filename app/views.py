@@ -35,7 +35,7 @@ def add_experiences():
 
 @app.route('/experience', methods=['POST'])
 def add_experience():
-    studentId = request.json['studentId']
+    studentId = 0
     jobTitle = request.json['jobTitle']
     fromMonth = request.json['from_month']
     fromYear = request.json['from_year']
@@ -69,7 +69,7 @@ def update_experience(id):
     if not experience:
         return jsonify({"error": "Experience not found"}), 404
     else:
-        experience.student_id = request.json.get('studentId', experience.student_id)
+        experience.student_id = 0 #request.json.get('studentId', experience.student_id)
         experience.job_title = request.json.get('jobTitle', experience.job_title)
         experience.from_month = request.json.get('from_month', experience.from_month)
         experience.from_year = request.json.get('from_year', experience.from_year)
