@@ -1,6 +1,8 @@
+import os
 from flask import request, jsonify
 from app import app, db, ma
-from app.models import Experience
+from werkzeug.utils import secure_filename
+from app.models import Experience, ExperienceDocument
 
 class ExperienceSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
@@ -9,6 +11,14 @@ class ExperienceSchema(ma.SQLAlchemyAutoSchema):
 
 experience_schema = ExperienceSchema()
 experiences_schema = ExperienceSchema(many=True)
+
+class ExperienceDocumentSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = ExperienceDocument
+        sqla_session = db.session
+
+experience_document_schema = ExperienceDocumentSchema()
+experiences_document_schema = ExperienceDocumentSchema(many=True)
 
 @app.route('/experiences', methods=['POST'])
 def add_experiences():
@@ -47,6 +57,16 @@ def add_experience():
     new_experience = Experience(studentId, jobTitle, fromMonth, fromYear, toMonth, toYear, company, country, description)
     db.session.add(new_experience)
     db.session.commit()
+
+    # recommendation = call the model function
+
+    # save the recommendation to database
+
+    # new_json = {
+    #  experience details,
+    #  recommendation-list
+    # }
+
     return experience_schema.jsonify(new_experience)
 
 @app.route('/experience', methods=['GET'])
@@ -91,3 +111,40 @@ def delete_experience(id):
         db.session.delete(experience)
         db.session.commit()
         return experience_schema.jsonify(experience)
+    
+@app.route('/upload', methods=['POST'])
+def upload_files():
+    experience_id = request.form.get('experience_id')  # Get the experience ID from the form data
+    if not experience_id:
+        return jsonify({"error": "Experience ID not provided"}), 400
+    
+    if 'file' not in request.files:
+        return jsonify({"error": "No files part"}), 400
+
+    files = request.files.getlist('file')
+    saved_files = []
+
+    for file in files:
+        if file.filename == '':
+            continue
+
+        if allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            filePath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(filePath)
+            saved_files.append(filename)
+
+            new_experience_document = ExperienceDocument(experience_id, filename, filePath)
+            db.session.add(new_experience_document)
+        else:
+            return jsonify({"error": f"File type not allowed for {file.filename}"}), 400
+
+    if not saved_files:
+        return jsonify({"error": "No valid files to save"}), 400
+
+    db.session.commit()
+    return jsonify({"message": "Files uploaded successfully!", "filenames": saved_files, "experience_id": experience_id})
+    
+ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx'}
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
