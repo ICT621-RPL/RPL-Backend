@@ -2,7 +2,9 @@ import os
 from flask import request, jsonify
 from app import app, db, ma
 from werkzeug.utils import secure_filename
-from app.models import Experience, ExperienceDocument
+from app.models import Experience, ExperienceDocument, Recommendation
+from app.utils import allowed_file, experience_to_dict, recommendation_to_dict
+from app.ml import cosine_similarity_check, compute_model
 
 class ExperienceSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
@@ -19,6 +21,14 @@ class ExperienceDocumentSchema(ma.SQLAlchemyAutoSchema):
 
 experience_document_schema = ExperienceDocumentSchema()
 experiences_document_schema = ExperienceDocumentSchema(many=True)
+
+class RecommendationSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = Recommendation
+        sqla_session = db.session
+
+recommendation_schema = RecommendationSchema()
+recommendations_schema = RecommendationSchema(many=True)
 
 @app.route('/experiences', methods=['POST'])
 def add_experiences():
@@ -59,15 +69,34 @@ def add_experience():
     db.session.commit()
 
     # recommendation = call the model function
+    generated_recommendations = compute_model(description)
 
-    # save the recommendation to database
+    new_recommendations = []
 
-    # new_json = {
-    #  experience details,
-    #  recommendation-list
-    # }
+    # save recommendation into the database
+    for recommendation in generated_recommendations:
+        unitCode = recommendation
 
-    return experience_schema.jsonify(new_experience)
+        new_recommendation = Recommendation(new_experience.experience_id, unitCode, 0)
+        db.session.add(new_recommendation)
+
+        # to_dict method to convert Recommendation object to a dictionary
+        new_recommendations.append(new_recommendation)
+
+    db.session.commit()
+
+    # to_dict method to convert Experience & Recommendation object to a dictionary
+    recommendation_dict = []
+    experience_dict = new_experience.to_dict() if hasattr(new_experience, 'to_dict') else experience_to_dict(new_experience)
+    for recommendation in new_recommendations:
+        recommendation_dict.append(recommendation.to_dict() if hasattr(recommendation, 'to_dict') else recommendation_to_dict(recommendation))
+
+    new_json = {
+     "experience" : experience_dict,
+     "recommendations": recommendation_dict
+    }
+
+    return jsonify(new_json)
 
 @app.route('/experience', methods=['GET'])
 def get_experiences():
@@ -144,7 +173,3 @@ def upload_files():
 
     db.session.commit()
     return jsonify({"message": "Files uploaded successfully!", "filenames": saved_files, "experience_id": experience_id})
-    
-ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx'}
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
