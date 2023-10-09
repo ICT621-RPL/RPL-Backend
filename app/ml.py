@@ -2,13 +2,14 @@ from sklearn.metrics.pairwise import cosine_similarity
 from app.utils import preprocess_text
 import joblib
 
+
 # Function to compute the cosine similarity check
 def cosine_similarity_check(experience_description):
     # Initialize the unit outcomes vector
-    X_tfidf = joblib.load('X_tfidf.pkl')
+    X_tfidf = joblib.load("X_tfidf.pkl")
 
     # Initialize the vectorizer
-    tfidf_vectorizer = joblib.load('tfidf_vectorizer.pkl')
+    tfidf_vectorizer = joblib.load("tfidf_vectorizer.pkl")
 
     # Preprocess the student's input
     cleaned_input = preprocess_text(experience_description)
@@ -32,15 +33,16 @@ def cosine_similarity_check(experience_description):
 
     return recommended_units
 
+
 def compute_model(description):
     # Initialize the models
-    trained_models = joblib.load('trained_models.pkl')
+    trained_models = joblib.load("trained_models.pkl")
 
-     # Initialize the unit outcomes vector
-    X_tfidf = joblib.load('X_tfidf.pkl')
+    # Initialize the unit outcomes vector
+    X_tfidf = joblib.load("X_tfidf.pkl")
 
     # Initialize the vectorizer
-    tfidf_vectorizer = joblib.load('tfidf_vectorizer.pkl')
+    tfidf_vectorizer = joblib.load("tfidf_vectorizer.pkl")
 
     # Preprocess the student's input
     cleaned_input = preprocess_text(description)

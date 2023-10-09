@@ -18,9 +18,9 @@ class Experience(db.Model):
     country = db.Column(db.String(20))
     description = db.Column(db.Text)
 
-     # Adding a relationship here so that when you have an Experience instance,
-    # you can easily fetch its documents
-    documents = relationship('ExperienceDocument', backref='experience')
+    # Adding a relationships
+    documents = relationship('ExperienceDocument', backref='experience', cascade="all, delete-orphan")
+    recommendations = relationship('Recommendation', backref='experience', cascade="all, delete-orphan")
 
     def __init__(self, studentId, jobTitle, fromMonth, fromYear, toMonth, toYear, company, country, description):
         self.student_id = studentId
@@ -90,9 +90,11 @@ class RplApplication(db.Model):
     application_id = db.Column(db.Integer, primary_key=True)
     application_date = db.Column(db.DateTime, default=datetime.utcnow)
     student_id = db.Column(db.Integer)
+    experience_id = db.Column(db.Integer, ForeignKey('tbl_experience.experience_id'), nullable=False)
 
-    def __init__(self, application_date, student_id):
+    def __init__(self, application_date, student_id, experience_id):
        if application_date is None:
            application_date = datetime.utcnow()
        self.application_date = application_date
        self.student_id = student_id
+       self.experience_id = experience_id
