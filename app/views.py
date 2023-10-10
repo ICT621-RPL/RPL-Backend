@@ -1,5 +1,5 @@
 import os
-from flask import request, jsonify
+from flask import request, jsonify, abort
 from app import app, db, ma
 from werkzeug.utils import secure_filename
 from app.models import Experience, ExperienceDocument, Recommendation, RplApplication
@@ -57,6 +57,12 @@ def add_experience():
     company = request.json["company"]
     country = request.json["country"]
     description = request.json["description"]
+
+
+    # Validate that fromYear is less than toYear
+    if fromYear >= toYear:
+        abort(400, description="From year must be less than To year")
+
     new_experience = Experience(
         studentId,
         jobTitle,
