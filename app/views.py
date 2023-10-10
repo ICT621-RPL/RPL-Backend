@@ -4,7 +4,7 @@ from app import app, db, ma
 from werkzeug.utils import secure_filename
 from app.models import Experience, ExperienceDocument, Recommendation, RplApplication
 from app.utils import allowed_file, experience_to_dict, recommendation_to_dict
-from app.ml import cosine_similarity_check, compute_model
+from app.ml import compute_model, cosine_similarity_check
 
 
 class ExperienceSchema(ma.SQLAlchemyAutoSchema):
@@ -114,6 +114,7 @@ def add_experiences():
     for exp_data in experiences_data:
         experienceId = exp_data.get("experience_id")
         recommendations = exp_data["courses"]
+        studentId = 0 #exp_data["studentId"]
 
         experience = Experience.query.get(experienceId)
         experience.student_id = 0 #exp_data.get("studentId", experience.student_id)
@@ -129,20 +130,21 @@ def add_experiences():
         for recommendation in recommendations:
             existing_recommendation = Recommendation.query.get(recommendation)
             existing_recommendation.is_applied = 1
-            # recommendations.append(existing_recommendation)
-        
+
+    new_application = RplApplication(None, studentId)
+    db.session.add(new_application)
 
     db.session.commit()
-    return experiences_schema.jsonify(experiences_data)
+
+    return rplApplication_schema.jsonify(new_application)
 
 
 @app.route("/upload", methods=["POST"])
 def upload_files():
-    experience_id = request.form.get(
-        "experience_id"
-    )  # Get the experience ID from the form data
-    if not experience_id:
-        return jsonify({"error": "Experience ID not provided"}), 400
+    application_id = request.form.get("application_id")  # Get the experience ID from the form data
+
+    if not application_id:
+        return jsonify({"error": "Application ID not provided"}), 400
 
     if "file" not in request.files:
         return jsonify({"error": "No files part"}), 400
@@ -161,7 +163,7 @@ def upload_files():
             saved_files.append(filename)
 
             new_experience_document = ExperienceDocument(
-                experience_id, filename, filePath
+                application_id, filename, filePath
             )
             db.session.add(new_experience_document)
         else:
@@ -175,25 +177,9 @@ def upload_files():
         {
             "message": "Files uploaded successfully!",
             "filenames": saved_files,
-            "experience_id": experience_id,
+            "application_id": application_id,
         }
     )
-
-
-@app.route("/application", methods=["POST"])
-def add_application():
-    studentId = 0 #request.json["studentId"]
-    # experienceId = request.json["experienceId"]
-
-    # if not experienceId:
-    #     return jsonify({"error": "Experience ID not provided"}), 400
-    # elif not studentId:
-    #     return jsonify({"error": "Student ID not provided"}), 400
-    # else:
-    new_application = RplApplication(None, studentId)
-    db.session.add(new_application)
-    db.session.commit()
-    return rplApplication_schema.jsonify(new_application)
 
 
 @app.route("/experiences", methods=["GET"])
