@@ -110,14 +110,13 @@ def add_experience():
 @app.route("/experiences", methods=["POST"])
 def add_experiences():
     experiences_data = request.json
-    new_experiences = []
 
     for exp_data in experiences_data:
         experienceId = exp_data.get("experience_id")
         recommendations = exp_data["courses"]
 
         experience = Experience.query.get(experienceId)
-        experience.student_id = exp_data.get("studentId", experience.student_id)
+        experience.student_id = 0 #exp_data.get("studentId", experience.student_id)
         experience.job_title = exp_data.get("jobTitle", experience.job_title)
         experience.from_month = exp_data.get("from_month", experience.from_month)
         experience.from_year = exp_data.get("from_year", experience.from_year)
@@ -129,13 +128,12 @@ def add_experiences():
 
         for recommendation in recommendations:
             existing_recommendation = Recommendation.query.get(recommendation)
-            existing_recommendation.experience_id = experienceId
             existing_recommendation.is_applied = 1
-            recommendations.append(existing_recommendation)
+            # recommendations.append(existing_recommendation)
         
 
     db.session.commit()
-    return experiences_schema.jsonify(new_experiences)
+    return experiences_schema.jsonify(experiences_data)
 
 
 @app.route("/upload", methods=["POST"])
@@ -184,17 +182,18 @@ def upload_files():
 
 @app.route("/application", methods=["POST"])
 def add_application():
-    studentId = request.json["studentId"]
-    experienceId = request.json["experienceId"]
+    studentId = 0 #request.json["studentId"]
+    # experienceId = request.json["experienceId"]
 
-    if not experienceId:
-        return jsonify({"error": "Experience ID not provided"}), 400
-    elif not studentId:
-        return jsonify({"error": "Student ID not provided"}), 400
-    else:
-        new_application = RplApplication(None, studentId, experienceId)
-        db.session.add(new_application)
-        db.session.commit()
+    # if not experienceId:
+    #     return jsonify({"error": "Experience ID not provided"}), 400
+    # elif not studentId:
+    #     return jsonify({"error": "Student ID not provided"}), 400
+    # else:
+    new_application = RplApplication(None, studentId)
+    db.session.add(new_application)
+    db.session.commit()
+    return rplApplication_schema.jsonify(new_application)
 
 
 @app.route("/experiences", methods=["GET"])

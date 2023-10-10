@@ -90,11 +90,11 @@ class RplApplication(db.Model):
     application_id = db.Column(db.Integer, primary_key=True)
     application_date = db.Column(db.DateTime, default=datetime.utcnow)
     student_id = db.Column(db.Integer)
-    experience_id = db.Column(db.Integer, ForeignKey('tbl_experience.experience_id'), nullable=False)
+    # experience_id = db.Column(db.Integer, ForeignKey('tbl_experience.experience_id'), nullable=False)
 
-    def __init__(self, application_date, student_id, experience_id):
+    def __init__(self, application_date, student_id):
        if application_date is None:
            application_date = datetime.utcnow()
        self.application_date = application_date
        self.student_id = student_id
-       self.experience_id = experience_id
+    #    self.experience_id = experience_id
