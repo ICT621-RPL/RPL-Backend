@@ -2,10 +2,13 @@ from app import db
 from sqlalchemy.orm import relationship
 from sqlalchemy import ForeignKey
 from datetime import datetime
+import os
+
+extend_existing_config = os.environ.get('SQLALCHEMY_EXTEND_EXISTING', 'False') == 'True'
 
 class Experience(db.Model):
     __tablename__ = 'tbl_experience'
-    __table_args__ = {'extend_existing': True}  # Ensure table isn't recreated
+    __table_args__ = {'extend_existing': extend_existing_config}  # Ensure table isn't recreated
 
     experience_id = db.Column(db.Integer, primary_key=True)
     student_id = db.Column(db.Integer)
@@ -48,7 +51,7 @@ class Experience(db.Model):
 
 class ExperienceDocument(db.Model):
     __tablename__ = 'tbl_experience_document'
-    __table_args__ = {'extend_existing': True}  # Ensure table isn't recreated
+    __table_args__ = {'extend_existing': extend_existing_config}  # Ensure table isn't recreated
 
     document_id = db.Column(db.Integer, primary_key=True)
     application_id = db.Column(db.Integer, ForeignKey('tbl_rpl_application.application_id'), nullable=False)
@@ -62,7 +65,7 @@ class ExperienceDocument(db.Model):
 
 class Recommendation(db.Model):
     __tablename__ = 'tbl_recommendation'
-    __table_args__ = {'extend_existing': True}  # Ensure table isn't recreated
+    __table_args__ = {'extend_existing': extend_existing_config}  # Ensure table isn't recreated
 
     recommendation_id = db.Column(db.Integer, primary_key=True)
     experience_id = db.Column(db.Integer, ForeignKey('tbl_experience.experience_id'), nullable=False)
@@ -84,7 +87,7 @@ class Recommendation(db.Model):
 
 class RplApplication(db.Model):
     __tablename__ = 'tbl_rpl_application'
-    __table_args__ = {'extend_existing': True}  # Ensure table isn't recreated
+    __table_args__ = {'extend_existing': extend_existing_config}  # Ensure table isn't recreated
 
     application_id = db.Column(db.Integer, primary_key=True)
     application_date = db.Column(db.DateTime, default=datetime.utcnow)

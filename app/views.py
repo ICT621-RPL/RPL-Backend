@@ -3,7 +3,7 @@ from flask import request, jsonify, abort
 from app import app, db, ma
 from werkzeug.utils import secure_filename
 from app.models import Experience, ExperienceDocument, Recommendation, RplApplication
-from app.utils import allowed_file, experience_to_dict, recommendation_to_dict
+from app.utils import allowed_file, experience_to_dict, recommendation_to_dict, send_email
 from app.ml import compute_model, cosine_similarity_check
 
 
@@ -115,15 +115,15 @@ def add_experience():
 
 @app.route("/experiences", methods=["POST"])
 def add_experiences():
-    experiences_data = request.json
+    student_id = request.json["studentId"]
+    experiences_data = request.json["experiences"]
 
     for exp_data in experiences_data:
         experienceId = exp_data.get("experience_id")
         recommendations = exp_data["courses"]
-        studentId = 0 #exp_data["studentId"]
 
         experience = Experience.query.get(experienceId)
-        experience.student_id = 0 #exp_data.get("studentId", experience.student_id)
+        experience.student_id = student_id
         experience.job_title = exp_data.get("jobTitle", experience.job_title)
         experience.from_month = exp_data.get("from_month", experience.from_month)
         experience.from_year = exp_data.get("from_year", experience.from_year)
@@ -137,7 +137,7 @@ def add_experiences():
             existing_recommendation = Recommendation.query.get(recommendation)
             existing_recommendation.is_applied = 1
 
-    new_application = RplApplication(None, studentId)
+    new_application = RplApplication(None, student_id)
     db.session.add(new_application)
 
     db.session.commit()
@@ -147,7 +147,7 @@ def add_experiences():
 
 @app.route("/upload", methods=["POST"])
 def upload_files():
-    application_id = request.form.get("application_id")  # Get the experience ID from the form data
+    application_id = request.form.get("application_id")  # Get the application ID from the form data
 
     if not application_id:
         return jsonify({"error": "Application ID not provided"}), 400
@@ -187,6 +187,13 @@ def upload_files():
         }
     )
 
+@app.route("/application", methods=["POST"])
+def submit_application():
+    application_id = request.json["application_id"]
+    all_experience_documents = ExperienceDocument.query.filter_by(application_id=application_id).all()
+    
+    send_email('testing', all_experience_documents)
+    return jsonify({"Message": "Application successfully submitted"}), 200
 
 @app.route("/experiences", methods=["GET"])
 def get_experiences():
