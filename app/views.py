@@ -1,5 +1,5 @@
 import os
-from flask import request, jsonify, abort
+from flask import request, jsonify, abort, send_file
 from app import app, db, ma
 from werkzeug.utils import secure_filename
 from app.models import Experience, ExperienceDocument, Recommendation, RplApplication, Status
@@ -286,3 +286,29 @@ def get_statues():
     all_statuses = Status.query.all()
     return statuses_schema.jsonify(all_statuses)
 
+@app.route("/download/<int:application_id>", methods=["GET"])
+def download_files(application_id):
+    documents = ExperienceDocument.query.filter_by(application_id=application_id).all()
+
+    if not documents:
+        return jsonify({"error": "No documents found for the given application ID"}), 404
+
+    # Create a list to store file information
+    file_data = []
+
+    for document in documents:
+        file_id = document.document_id
+        file_name = document.file_name
+        file_path = document.file_path
+
+        # Read the file content
+        with open(file_path, "rb") as file:
+            file_content = file.read()
+
+        file_data.append({
+            "file_id": file_id,
+            "file_name": file_name,
+            "file_content": file_content.decode('latin-1')  # Convert binary content to a string
+        })
+
+    return jsonify(file_data)
