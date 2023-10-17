@@ -71,11 +71,13 @@ class Recommendation(db.Model):
     experience_id = db.Column(db.Integer, ForeignKey('tbl_experience.experience_id'), nullable=False)
     recommendation_unit_code = db.Column(db.String(20))
     is_applied = db.Column(db.Integer, default=0)
+    status_id = db.Column(db.Integer, ForeignKey('tbl_status_master.status_id'), nullable=False)
 
-    def __init__(self, experience_id, recommendation_unit_code, is_applied):
+    def __init__(self, experience_id, recommendation_unit_code, is_applied, status_id):
        self.experience_id = experience_id
        self.recommendation_unit_code = recommendation_unit_code
        self.is_applied = is_applied
+       self.status_id = status_id
 
     def to_dict(self):
         return {
@@ -101,3 +103,17 @@ class RplApplication(db.Model):
            application_date = datetime.utcnow()
        self.application_date = application_date
        self.student_id = student_id
+
+class Status(db.Model):
+    __tablename__ = 'tbl_status_master'
+    __table_args__ = {'extend_existing': extend_existing_config}  # Ensure table isn't recreated
+
+    status_id = db.Column(db.Integer, primary_key=True)
+    status_name = db.Column(db.String(250))
+
+    # Adding a relationships
+    recommendation = relationship('Recommendation', backref='recommendation')
+
+    def __init__(self, status_id, status_name):
+       self.status_id = status_id
+       self.status_name = status_name

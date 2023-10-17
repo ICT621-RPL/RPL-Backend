@@ -2,7 +2,7 @@ import os
 from flask import request, jsonify, abort
 from app import app, db, ma
 from werkzeug.utils import secure_filename
-from app.models import Experience, ExperienceDocument, Recommendation, RplApplication
+from app.models import Experience, ExperienceDocument, Recommendation, RplApplication, Status
 from app.utils import allowed_file, experience_to_dict, recommendation_to_dict, send_email
 from app.ml import compute_model, cosine_similarity_check
 
@@ -86,7 +86,7 @@ def add_experience():
     for recommendation in generated_recommendations:
         unitCode = recommendation
 
-        new_recommendation = Recommendation(new_experience.experience_id, unitCode, 0)
+        new_recommendation = Recommendation(new_experience.experience_id, unitCode, 0, 1)
         db.session.add(new_recommendation)
 
         # to_dict method to convert Recommendation object to a dictionary
@@ -136,6 +136,7 @@ def add_experiences():
         for recommendation in recommendations:
             existing_recommendation = Recommendation.query.get(recommendation)
             existing_recommendation.is_applied = 1
+            existing_recommendation.status_id = 2
 
     new_application = RplApplication(None, student_id)
     db.session.add(new_application)
@@ -191,46 +192,49 @@ def upload_files():
 def submit_application():
     application_id = request.json["application_id"]
     all_experience_documents = ExperienceDocument.query.filter_by(application_id=application_id).all()
-    
-    send_email('testing', all_experience_documents)
+    application = RplApplication.query.get(application_id)
+    all_experiences = Experience.query.filter_by(student_id=application.student_id).all()
+
+    all_recommendations = []
+    for experience in all_experiences:
+        all_recommendations.append(Recommendation.query.filter_by(experience_id=experience.experience_id))
+
+    send_email(application_id, all_experiences, all_experience_documents, all_recommendations)
     return jsonify({"Message": "Application successfully submitted"}), 200
 
-@app.route("/experiences", methods=["GET"])
-def get_experiences():
-    all_experiences = Experience.query.all()
-    return experiences_schema.jsonify(all_experiences)
 
+@app.route("/application/<id>", methods=["GET"])
+def get_application(id):
+    application = RplApplication.query.get(id)
 
-@app.route("/experience/<id>", methods=["GET"])
-def get_experience(id):
-    experience = Experience.query.get(id)
-    if not experience:
-        return jsonify({"error": "Experience not found"}), 404
+    if not application:
+        return jsonify({"error": "Application not found"}), 404
     else:
-        return experience_schema.jsonify(experience)
+        all_experiences = Experience.query.filter_by(student_id=application.student_id).all()
+        application_data = rplApplication_schema.dump(application)
+        experiences_data = []
 
+        for experience in all_experiences:
+            experience_data = experience_schema.dump(experience)
 
-@app.route("/experience/<id>", methods=["PUT"])
-def update_experience(id):
-    experience = Experience.query.get(id)
+            # Query recommendations with is_applied = 1 for this experience
+            recommendations = Recommendation.query.filter_by(experience_id=experience.experience_id, is_applied=1).all()
+            recommendation_data = []
 
-    if not experience:
-        return jsonify({"error": "Experience not found"}), 404
-    else:
-        experience.student_id = (
-            0  # request.json.get('studentId', experience.student_id)
-        )
-        experience.job_title = request.json.get("jobTitle", experience.job_title)
-        experience.from_month = request.json.get("from_month", experience.from_month)
-        experience.from_year = request.json.get("from_year", experience.from_year)
-        experience.to_month = request.json.get("to_month", experience.to_month)
-        experience.to_year = request.json.get("to_year", experience.to_year)
-        experience.company = request.json.get("company", experience.company)
-        experience.country = request.json.get("country", experience.country)
-        experience.description = request.json.get("experience", experience.description)
+            for rec in recommendations:
+                status = Status.query.get(rec.status_id)  # Fetch status information
+                recommendation_dict = recommendation_schema.dump(rec)
+                recommendation_dict["status_id"] = status.status_id
+                recommendation_dict["status_name"] = status.status_name
+                recommendation_data.append(recommendation_dict)
 
-        db.session.commit()
-        return experience_schema.jsonify(experience)
+            experience_data["recommendations"] = recommendation_data
+            experiences_data.append(experience_data)
+
+        return jsonify({
+            "application": application_data,
+            "experiences": experiences_data
+        })
 
 
 @app.route("/experience/<id>", methods=["DELETE"])
@@ -242,3 +246,30 @@ def delete_experience(id):
         db.session.delete(experience)
         db.session.commit()
         return experience_schema.jsonify(experience)
+    
+@app.route("/recommendation", methods=["POST"])
+def add_recommendation():
+    unit_code = request.json["unit_code"]
+    experience_id = request.json["experience_id"]
+
+    new_recommendation = Recommendation(experience_id, unit_code, 1, 2)
+    db.session.add(new_recommendation)
+    db.session.commit()
+
+    return recommendation_schema.jsonify(new_recommendation)
+
+@app.route("/transaction", methods=["POST"])
+def change_status():
+    recommendation_id = request.json["recommendation_id"]
+    status_id = request.json["status_id"]
+
+    recommendation = Recommendation.query.get(recommendation_id)
+
+    if not recommendation:
+        return jsonify({"error": "Recommendation not found"}), 404
+    else:
+        recommendation.status_id = status_id
+        db.session.commit()
+
+        return recommendation_schema.jsonify(recommendation)
+
