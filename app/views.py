@@ -45,6 +45,14 @@ class RplApplicationSchema(ma.SQLAlchemyAutoSchema):
 
 rplApplication_schema = RplApplicationSchema()
 
+class StatusSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = Status
+        sqla_session = db.session
+
+
+statuses_schema = StatusSchema(many=True)
+
 
 @app.route("/experience", methods=["POST"])
 def add_experience():
@@ -272,4 +280,9 @@ def change_status():
         db.session.commit()
 
         return recommendation_schema.jsonify(recommendation)
+    
+@app.route("/statuses", methods=["GET"])
+def get_statues():
+    all_statuses = Status.query.all()
+    return statuses_schema.jsonify(all_statuses)
 
