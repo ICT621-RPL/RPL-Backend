@@ -88,6 +88,8 @@ class Recommendation(db.Model):
             'recommendation_id': self.recommendation_id,
             'experience_id': self.experience_id,
             'recommendation_unit_code': self.recommendation_unit_code,
+            'recommendation_unit_name': self.recommendation_unit_name,
+            'recommendation_similarity': self.recommendation_similarity,
             'is_applied': self.is_applied
         }
 
