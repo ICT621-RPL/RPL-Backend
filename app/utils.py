@@ -1,7 +1,10 @@
 import re, os, smtplib
 from flask_mail import Mail
 from email.message import EmailMessage
+import nltk
+nltk.download('punkt')
 from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
 
 mail = Mail()
 
@@ -24,6 +27,23 @@ def clean_text(text):
     text = text.lower()
     text = ' '.join([word for word in text.split() if word not in stopwords.words('english')])
     return text
+
+# Helper function for data preprocessing and feature extraction
+def process_text(text):
+    if isinstance(text, str):
+        text = re.sub(r'UNLO\d+\|\d+\|', '', text)  # Remove 'UNLO' patterns
+        text = text.lower()  # Convert to lowercase
+        text = re.sub('<[^>]+>', '', text)  # Remove HTML tags
+        text = re.sub(r'[^\w\s]', '', text)  # Remove special characters and symbols
+        stop_words = set(stopwords.words('english'))  # Set of English stopwords
+        word_tokens = word_tokenize(text)  # Tokenize the text into words
+        filtered_text = [word for word in word_tokens if word not in stop_words]  # Remove stopwords
+        # Perform stemming or lemmatization if required
+        # Join the remaining words back into a string
+        text = ' '.join(filtered_text)
+        return text
+    else:
+        return ''
 
 
 # Helper function to convert Experience Object to Dictionary

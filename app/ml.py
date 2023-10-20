@@ -1,6 +1,6 @@
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.neighbors import NearestNeighbors
-from app.utils import preprocess_text, clean_text
+from app.utils import preprocess_text, clean_text, process_text
 import joblib, os
 
 # Setting the Minimum Similarity Threshold
@@ -17,7 +17,7 @@ def cosine_similarity_with_knn(experience_description):
     # Initialize the data
     new_df = joblib.load("data.pkl")
 
-    cleaned_experience = clean_text(experience_description)
+    cleaned_experience = process_text(experience_description)
     query_vector = vectorizer.transform([cleaned_experience])
     distances, indices = model.kneighbors(query_vector)
 
