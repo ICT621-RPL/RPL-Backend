@@ -7,7 +7,7 @@ A Flask application for performing CRUD (Create, Read, Update, Delete) operation
 ### 1. Environment Setup:
 
 ```bash
-pip install flask flask_sqlalchemy flask_marshmallow marshmallow-sqlalchemy mysqlclient
+pip install flask flask-mail flask-cors flask_sqlalchemy flask_marshmallow marshmallow-sqlalchemy mysqlclient scikit-learn python-dotenv
 ```
 
 ### 2. Application Structure:
@@ -16,9 +16,15 @@ pip install flask flask_sqlalchemy flask_marshmallow marshmallow-sqlalchemy mysq
 /RPL-Backend
 |-- /app
 |   |-- __init__.py
+|   |-- ml.py
 |   |-- models.py
+|   |-- utils.py
 |   |-- views.py
+|-- /uploads
 |-- run.py
+|-- tfidf_vectorizer.pkl
+|-- trained_models.pkl
+|-- X_tfidf.pkl
 ```
 
 ### 3. Configuration:
