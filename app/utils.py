@@ -1,6 +1,7 @@
 import re, os, smtplib
 from flask_mail import Mail
 from email.message import EmailMessage
+from nltk.corpus import stopwords
 
 mail = Mail()
 
@@ -11,10 +12,17 @@ def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-# Function to preprocess text
+# Helper function to preprocess text
 def preprocess_text(text):
     text = text.lower()  # Convert to lowercase
     text = re.sub(r"[^\w\s]", "", text)  # Remove punctuation
+    return text
+
+# Helper function for data Preprocessing
+def clean_text(text):
+    text = re.sub(r'[^\w\s]', '', text)
+    text = text.lower()
+    text = ' '.join([word for word in text.split() if word not in stopwords.words('english')])
     return text
 
 
@@ -64,80 +72,7 @@ def send_email(application_id, experience_details, experience_document_paths, re
     msg["From"] = mail_username
     msg["To"] = recipient_email
 
-    # experience_html = generate_experience_html(experience_details, recommendations)
-    # msg.add_alternative(experience_html, subtype="html")
-
-    # for document in experience_document_paths:
-    #     document_path = (
-    #         document.file_path
-    #     )  # Change this if it's another name or a method
-    #     absolute_path = os.path.abspath(document_path)
-
-    #     # Determine MIME type and read the file
-    #     if absolute_path.endswith(".pdf"):
-    #         mime_type = "application/pdf"
-    #     elif absolute_path.endswith(".docx"):
-    #         mime_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    #     elif absolute_path.endswith(".doc"):
-    #         mime_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    #     else:
-    #         print(f"Unsupported file type for {absolute_path}. Skipping.")
-    #         continue
-
-    #     try:
-    #         with open(absolute_path, "rb") as fp:
-    #             file_name = os.path.basename(absolute_path)
-    #             file_content = fp.read()
-    #             msg.add_attachment(
-    #                 file_content,
-    #                 maintype=mime_type.split("/")[0],
-    #                 subtype=mime_type.split("/")[1],
-    #                 filename=file_name,
-    #             )
-    #     except Exception as e:
-    #         print(f"Error reading {absolute_path}: {e}")
-
     # Using SMTP_SSL for secure connection
     with smtplib.SMTP_SSL(mail_server, mail_port) as server:
         server.login(mail_username, mail_password)
         server.send_message(msg)
-
-
-# Helper function to generate HTML from experience details
-def generate_experience_html(experience_details, recommendations):
-    content = os.environ.get("MAIL_INTRO") + "<br/>"
-    for experience in experience_details:
-        content += """
-        <h2>{}</h2>
-        <ul>
-            <li>
-                <p>{} {} - {} {}</p>
-                <p>{}</p>
-                <p>{}</p>
-                <p>{}</p>
-            </li>
-        </ul>
-        """.format(
-            experience.job_title,
-            experience.from_month,
-            experience.from_year,
-            experience.to_month,
-            experience.to_year,
-            experience.company,
-            experience.country,
-            experience.description,
-        )
-
-    content += os.environ.get("MAIL_RECOMMENDATION_INTRO") + "<br/>"
-    for recommendation in recommendations:
-        content += """
-        <ul>
-            <li>
-                <p>{}</p>
-            </li>
-        </ul>
-        """.format(
-            recommendation['recommendation_unit_code']
-        )
-
-    return content

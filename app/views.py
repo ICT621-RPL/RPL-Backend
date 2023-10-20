@@ -4,7 +4,7 @@ from app import app, db, ma
 from werkzeug.utils import secure_filename
 from app.models import Experience, ExperienceDocument, Recommendation, RplApplication, Status
 from app.utils import allowed_file, experience_to_dict, recommendation_to_dict, send_email
-from app.ml import compute_model, cosine_similarity_check
+from app.ml import compute_model, cosine_similarity_with_knn
 
 
 class ExperienceSchema(ma.SQLAlchemyAutoSchema):
@@ -86,15 +86,13 @@ def add_experience():
     db.session.commit()
 
     # recommendation = call the model function
-    generated_recommendations = compute_model(description)
+    generated_recommendations = cosine_similarity_with_knn(description)
 
     new_recommendations = []
 
     # save recommendation into the database
-    for recommendation in generated_recommendations:
-        unitCode = recommendation
-
-        new_recommendation = Recommendation(new_experience.experience_id, unitCode, 0, 1)
+    for unit_code, unit_name, similarity in generated_recommendations:
+        new_recommendation = Recommendation(new_experience.experience_id, unit_code, unit_name, similarity, 0, 1)
         db.session.add(new_recommendation)
 
         # to_dict method to convert Recommendation object to a dictionary
@@ -258,9 +256,10 @@ def delete_experience(id):
 @app.route("/recommendation", methods=["POST"])
 def add_recommendation():
     unit_code = request.json["unit_code"]
+    unit_name = request.json["unit_name"]
     experience_id = request.json["experience_id"]
 
-    new_recommendation = Recommendation(experience_id, unit_code, 1, 2)
+    new_recommendation = Recommendation(experience_id, unit_code, unit_name, None, 1, 2)
     db.session.add(new_recommendation)
     db.session.commit()
 
