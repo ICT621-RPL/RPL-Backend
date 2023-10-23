@@ -64,13 +64,17 @@ def experience_to_dict(exp):
 
 
 # Helper function to convert Experience Object to Dictionary
-def recommendation_to_dict(recommendation):
-    return {
-        "recommendation_id": recommendation.recommendation_id,
-        "experience_id": recommendation.experience_id,
-        "recommendation_unit_code": recommendation.recommendation_unit_code,
-        "is_applied": recommendation.is_applied,
-    }
+def recommendation_to_dict(recommendations):
+    recommendations_array = []
+    for unit_code, unit_name, similarity in recommendations:
+        recommendations_dict = {
+            "recommendation_unit_code": unit_code,
+            "recommendation_unit_name": unit_name,
+            "recommendation_similarity": similarity
+        }
+        recommendations_array.append(recommendations_dict)
+
+    return recommendations_array
 
 
 # Helper function to send email

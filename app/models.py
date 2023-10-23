@@ -12,6 +12,7 @@ class Experience(db.Model):
 
     experience_id = db.Column(db.Integer, primary_key=True)
     student_id = db.Column(db.Integer)
+    application_id = db.Column(db.Integer, ForeignKey('tbl_rpl_application.application_id'), nullable=False)
     job_title = db.Column(db.String(250))
     from_month = db.Column(db.String(20))
     from_year = db.Column(db.String(20))
@@ -24,7 +25,7 @@ class Experience(db.Model):
     # Adding a relationships
     recommendations = relationship('Recommendation', backref='experience', cascade="all, delete-orphan")
 
-    def __init__(self, studentId, jobTitle, fromMonth, fromYear, toMonth, toYear, company, country, description):
+    def __init__(self, studentId, jobTitle, fromMonth, fromYear, toMonth, toYear, company, country, description, application_id):
         self.student_id = studentId
         self.job_title = jobTitle
         self.from_year = fromYear
@@ -34,11 +35,13 @@ class Experience(db.Model):
         self.company = company
         self.country = country
         self.description = description
+        self.application_id = application_id
 
     def to_dict(self):
         return {
             'experience_id': self.experience_id,
             'studentId': self.student_id,
+            'applicationId': self.application_id,
             'jobTitle': self.job_title,
             'fromMonth': self.from_month,
             'fromYear': self.from_year,
@@ -101,8 +104,9 @@ class RplApplication(db.Model):
     application_date = db.Column(db.DateTime, default=datetime.utcnow)
     student_id = db.Column(db.Integer)
 
-     # Adding a relationships
-    documents = relationship('ExperienceDocument', backref='experience', cascade="all, delete-orphan")
+    # Adding a relationships
+    documents = relationship('ExperienceDocument', backref='experienceDocument', cascade="all, delete-orphan")
+    experiences = relationship('Experience', backref='experience', cascade="all, delete-orphan")
 
     def __init__(self, application_date, student_id):
        if application_date is None:
