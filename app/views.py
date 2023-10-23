@@ -307,7 +307,8 @@ def download_files(application_id):
         file_data.append({
             "file_id": file_id,
             "file_name": file_name,
-            "file_content": file_content.decode('latin-1')  # Convert binary content to a string
+            "file_content": file_content.decode('latin-1'),  # Convert binary content to a string
+            "file_path": file_path
         })
 
     return jsonify(file_data)
