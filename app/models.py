@@ -70,20 +70,26 @@ class Recommendation(db.Model):
     recommendation_id = db.Column(db.Integer, primary_key=True)
     experience_id = db.Column(db.Integer, ForeignKey('tbl_experience.experience_id'), nullable=False)
     recommendation_unit_code = db.Column(db.String(20))
+    recommendation_unit_name = db.Column(db.String(250))
+    recommendation_similarity = db.Column(db.Float)
     is_applied = db.Column(db.Integer, default=0)
     status_id = db.Column(db.Integer, ForeignKey('tbl_status_master.status_id'), nullable=False)
 
-    def __init__(self, experience_id, recommendation_unit_code, is_applied, status_id):
+    def __init__(self, experience_id, recommendation_unit_code, unit_name, similarity, is_applied, status_id):
        self.experience_id = experience_id
        self.recommendation_unit_code = recommendation_unit_code
        self.is_applied = is_applied
        self.status_id = status_id
+       self.recommendation_unit_name = unit_name
+       self.recommendation_similarity = similarity
 
     def to_dict(self):
         return {
             'recommendation_id': self.recommendation_id,
             'experience_id': self.experience_id,
             'recommendation_unit_code': self.recommendation_unit_code,
+            'recommendation_unit_name': self.recommendation_unit_name,
+            'recommendation_similarity': self.recommendation_similarity,
             'is_applied': self.is_applied
         }
 

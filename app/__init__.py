@@ -3,7 +3,6 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 from flask_cors import CORS
 from dotenv import load_dotenv
-from flask_mail import Mail
 from app.utils import mail
 import os
 

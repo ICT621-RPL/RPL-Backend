@@ -1,37 +1,42 @@
 from sklearn.metrics.pairwise import cosine_similarity
-from app.utils import preprocess_text
-import joblib
+from sklearn.neighbors import NearestNeighbors
+from app.utils import preprocess_text, clean_text, process_text
+import joblib, os
 
+# Setting the Minimum Similarity Threshold
+MIN_SIMILARITY_THRESHOLD = int(os.environ.get("MIN_SIMILARITY_THRESHOLD"))
 
-# Function to compute the cosine similarity check
-def cosine_similarity_check(experience_description):
-    # Initialize the unit outcomes vector
-    X_tfidf = joblib.load("X_tfidf.pkl")
-
+# Function to compute the cosine similarity check using k-NN ML algorithm
+def cosine_similarity_with_knn(experience_description):
     # Initialize the vectorizer
-    tfidf_vectorizer = joblib.load("tfidf_vectorizer.pkl")
+    vectorizer = joblib.load("vectorizer.pkl")
 
-    # Preprocess the student's input
-    cleaned_input = preprocess_text(experience_description)
+    # Initialize the model
+    model = joblib.load("knn-model.pkl")
 
-    # Vectorize the applicant's experience description
-    input_vector = tfidf_vectorizer.transform([cleaned_input])
+    # Initialize the data
+    new_df = joblib.load("data.pkl")
 
-    cosine_similarities = cosine_similarity(input_vector, X_tfidf)
+    cleaned_experience = process_text(experience_description)
+    query_vector = vectorizer.transform([cleaned_experience])
+    distances, indices = model.kneighbors(query_vector)
 
-    # Set a similarity threshold
-    similarity_threshold = 0.2
+    if len(cleaned_experience.split()) < 10:
+        return "Please provide a more detailed work experience for better recommendations."
 
-    # Initialize a list to collect recommended units
-    recommended_units = []
+    recommendations = []
+    for i, index in enumerate(indices[0]):
+        similarity = (1 - distances[0][i]) * 100
+        
+        if similarity < MIN_SIMILARITY_THRESHOLD:
+            continue
+        
+        unit_code = new_df.iloc[index]['code']  
+        unit_name = new_df.iloc[index]['name']
+        
+        recommendations.append((unit_code, unit_name, round(similarity, 2)))
 
-    # Check if the highest similarity is above the threshold
-    if cosine_similarities.max() >= similarity_threshold:
-        recommended_unit_index = cosine_similarities.argmax()
-        recommended_unit = X_tfidf.unit_names[recommended_unit_index]
-        recommended_units.append(recommended_unit)
-
-    return recommended_units
+    return recommendations
 
 
 def compute_model(description):
