@@ -1,10 +1,16 @@
 import os
-from flask import request, jsonify, abort, send_file
+from flask import request, jsonify, abort
 from app import app, db, ma
 from werkzeug.utils import secure_filename
-from app.models import Experience, ExperienceDocument, Recommendation, RplApplication, Status
-from app.utils import allowed_file, experience_to_dict, recommendation_to_dict, send_email
-from app.ml import compute_model, cosine_similarity_with_knn
+from app.models import (
+    Experience,
+    ExperienceDocument,
+    Recommendation,
+    RplApplication,
+    Status,
+)
+from app.utils import allowed_file, send_email, recommendation_to_dict
+from app.ml import cosine_similarity_with_knn
 
 
 class ExperienceSchema(ma.SQLAlchemyAutoSchema):
@@ -45,6 +51,7 @@ class RplApplicationSchema(ma.SQLAlchemyAutoSchema):
 
 rplApplication_schema = RplApplicationSchema()
 
+
 class StatusSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = Status
@@ -56,65 +63,21 @@ statuses_schema = StatusSchema(many=True)
 
 @app.route("/experience", methods=["POST"])
 def add_experience():
-    studentId = 0
-    jobTitle = request.json["jobTitle"]
-    fromMonth = request.json["from_month"]
     fromYear = request.json["from_year"]
-    toMonth = request.json["to_month"]
     toYear = request.json["to_year"]
-    company = request.json["company"]
-    country = request.json["country"]
     description = request.json["description"]
-
 
     # Validate that fromYear is less than toYear
     if fromYear >= toYear:
         abort(400, description="From year must be less than To year")
 
-    new_experience = Experience(
-        studentId,
-        jobTitle,
-        fromMonth,
-        fromYear,
-        toMonth,
-        toYear,
-        company,
-        country,
-        description,
-    )
-    db.session.add(new_experience)
-    db.session.commit()
-
     # recommendation = call the model function
     generated_recommendations = cosine_similarity_with_knn(description)
 
-    new_recommendations = []
+    # Convert generated recommendations to json object
+    recommendations = recommendation_to_dict(generated_recommendations)
 
-    # save recommendation into the database
-    for unit_code, unit_name, similarity in generated_recommendations:
-        new_recommendation = Recommendation(new_experience.experience_id, unit_code, unit_name, similarity, 0, 1)
-        db.session.add(new_recommendation)
-
-        # to_dict method to convert Recommendation object to a dictionary
-        new_recommendations.append(new_recommendation)
-
-    db.session.commit()
-
-    # to_dict method to convert Experience & Recommendation object to a dictionary
-    recommendation_dict = []
-    experience_dict = (
-        new_experience.to_dict()
-        if hasattr(new_experience, "to_dict")
-        else experience_to_dict(new_experience)
-    )
-    for recommendation in new_recommendations:
-        recommendation_dict.append(
-            recommendation.to_dict()
-            if hasattr(recommendation, "to_dict")
-            else recommendation_to_dict(recommendation)
-        )
-
-    new_json = {"experience": experience_dict, "recommendations": recommendation_dict}
+    new_json = {"experience": request.json, "recommendations": recommendations}
 
     return jsonify(new_json)
 
@@ -124,37 +87,56 @@ def add_experiences():
     student_id = request.json["studentId"]
     experiences_data = request.json["experiences"]
 
-    for exp_data in experiences_data:
-        experienceId = exp_data.get("experience_id")
-        recommendations = exp_data["courses"]
-
-        experience = Experience.query.get(experienceId)
-        experience.student_id = student_id
-        experience.job_title = exp_data.get("jobTitle", experience.job_title)
-        experience.from_month = exp_data.get("from_month", experience.from_month)
-        experience.from_year = exp_data.get("from_year", experience.from_year)
-        experience.to_month = exp_data.get("to_month", experience.to_month)
-        experience.to_year = exp_data.get("to_year", experience.to_year)
-        experience.company = exp_data.get("company", experience.company)
-        experience.country = exp_data.get("country", experience.country)
-        experience.description = exp_data.get("description", experience.description)
-
-        for recommendation in recommendations:
-            existing_recommendation = Recommendation.query.get(recommendation)
-            existing_recommendation.is_applied = 1
-            existing_recommendation.status_id = 2
-
     new_application = RplApplication(None, student_id)
     db.session.add(new_application)
-
     db.session.commit()
+
+    for exp_data in experiences_data:
+        jobTitle = exp_data.get("jobTitle")
+        fromMonth = exp_data.get("from_month")
+        fromYear = exp_data.get("from_year")
+        toMonth = exp_data.get("to_month")
+        toYear = exp_data.get("to_year")
+        company = exp_data.get("company")
+        country = exp_data.get("country")
+        description = exp_data.get("description")
+
+        new_experience = Experience(
+            student_id,
+            jobTitle,
+            fromMonth,
+            fromYear,
+            toMonth,
+            toYear,
+            company,
+            country,
+            description,
+            new_application.application_id,
+        )
+        db.session.add(new_experience)
+        db.session.commit()
+
+        recommendations = exp_data["courses"]
+        for recommendation in recommendations:
+            new_recommendation = Recommendation(
+                new_experience.experience_id,
+                recommendation.get('recommendation_unit_code'),
+                recommendation.get('recommendation_unit_name'),
+                recommendation.get('recommendation_similarity'),
+                1,
+                1,
+            )
+            db.session.add(new_recommendation)
+            db.session.commit()
 
     return rplApplication_schema.jsonify(new_application)
 
 
 @app.route("/upload", methods=["POST"])
 def upload_files():
-    application_id = request.form.get("application_id")  # Get the application ID from the form data
+    application_id = request.form.get(
+        "application_id"
+    )  # Get the application ID from the form data
 
     if not application_id:
         return jsonify({"error": "Application ID not provided"}), 400
@@ -194,18 +176,27 @@ def upload_files():
         }
     )
 
+
 @app.route("/application", methods=["POST"])
 def submit_application():
     application_id = request.json["application_id"]
-    all_experience_documents = ExperienceDocument.query.filter_by(application_id=application_id).all()
+    all_experience_documents = ExperienceDocument.query.filter_by(
+        application_id=application_id
+    ).all()
     application = RplApplication.query.get(application_id)
-    all_experiences = Experience.query.filter_by(student_id=application.student_id).all()
+    all_experiences = Experience.query.filter_by(
+        student_id=application.student_id
+    ).all()
 
     all_recommendations = []
     for experience in all_experiences:
-        all_recommendations.append(Recommendation.query.filter_by(experience_id=experience.experience_id))
+        all_recommendations.append(
+            Recommendation.query.filter_by(experience_id=experience.experience_id)
+        )
 
-    send_email(application_id, all_experiences, all_experience_documents, all_recommendations)
+    send_email(
+        application_id, all_experiences, all_experience_documents, all_recommendations
+    )
     return jsonify({"Message": "Application successfully submitted"}), 200
 
 
@@ -216,7 +207,9 @@ def get_application(id):
     if not application:
         return jsonify({"error": "Application not found"}), 404
     else:
-        all_experiences = Experience.query.filter_by(student_id=application.student_id).all()
+        all_experiences = Experience.query.filter_by(
+            application_id=application.application_id
+        ).all()
         application_data = rplApplication_schema.dump(application)
         experiences_data = []
 
@@ -224,7 +217,9 @@ def get_application(id):
             experience_data = experience_schema.dump(experience)
 
             # Query recommendations with is_applied = 1 for this experience
-            recommendations = Recommendation.query.filter_by(experience_id=experience.experience_id, is_applied=1).all()
+            recommendations = Recommendation.query.filter_by(
+                experience_id=experience.experience_id, is_applied=1
+            ).all()
             recommendation_data = []
 
             for rec in recommendations:
@@ -237,10 +232,9 @@ def get_application(id):
             experience_data["recommendations"] = recommendation_data
             experiences_data.append(experience_data)
 
-        return jsonify({
-            "application": application_data,
-            "experiences": experiences_data
-        })
+        return jsonify(
+            {"application": application_data, "experiences": experiences_data}
+        )
 
 
 @app.route("/experience/<id>", methods=["DELETE"])
@@ -252,7 +246,8 @@ def delete_experience(id):
         db.session.delete(experience)
         db.session.commit()
         return experience_schema.jsonify(experience)
-    
+
+
 @app.route("/recommendation", methods=["POST"])
 def add_recommendation():
     unit_code = request.json["unit_code"]
@@ -264,6 +259,7 @@ def add_recommendation():
     db.session.commit()
 
     return recommendation_schema.jsonify(new_recommendation)
+
 
 @app.route("/transaction", methods=["POST"])
 def change_status():
@@ -279,18 +275,23 @@ def change_status():
         db.session.commit()
 
         return recommendation_schema.jsonify(recommendation)
-    
+
+
 @app.route("/statuses", methods=["GET"])
 def get_statues():
     all_statuses = Status.query.all()
     return statuses_schema.jsonify(all_statuses)
+
 
 @app.route("/download/<int:application_id>", methods=["GET"])
 def download_files(application_id):
     documents = ExperienceDocument.query.filter_by(application_id=application_id).all()
 
     if not documents:
-        return jsonify({"error": "No documents found for the given application ID"}), 404
+        return (
+            jsonify({"error": "No documents found for the given application ID"}),
+            404,
+        )
 
     # Create a list to store file information
     file_data = []
@@ -304,11 +305,15 @@ def download_files(application_id):
         with open(file_path, "rb") as file:
             file_content = file.read()
 
-        file_data.append({
-            "file_id": file_id,
-            "file_name": file_name,
-            "file_content": file_content.decode('latin-1'),  # Convert binary content to a string
-            "file_path": file_path
-        })
+        file_data.append(
+            {
+                "file_id": file_id,
+                "file_name": file_name,
+                "file_content": file_content.decode(
+                    "latin-1"
+                ),  # Convert binary content to a string
+                "file_path": file_path,
+            }
+        )
 
     return jsonify(file_data)

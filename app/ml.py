@@ -1,6 +1,6 @@
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.neighbors import NearestNeighbors
-from app.utils import preprocess_text, clean_text, process_text
+from app.utils import process_text
 import joblib, os
 
 # Setting the Minimum Similarity Threshold
@@ -39,31 +39,31 @@ def cosine_similarity_with_knn(experience_description):
     return recommendations
 
 
-def compute_model(description):
-    # Initialize the models
-    trained_models = joblib.load("trained_models.pkl")
+# def compute_model(description):
+#     # Initialize the models
+#     trained_models = joblib.load("trained_models.pkl")
 
-    # Initialize the unit outcomes vector
-    X_tfidf = joblib.load("X_tfidf.pkl")
+#     # Initialize the unit outcomes vector
+#     X_tfidf = joblib.load("X_tfidf.pkl")
 
-    # Initialize the vectorizer
-    tfidf_vectorizer = joblib.load("tfidf_vectorizer.pkl")
+#     # Initialize the vectorizer
+#     tfidf_vectorizer = joblib.load("tfidf_vectorizer.pkl")
 
-    # Preprocess the student's input
-    cleaned_input = preprocess_text(description)
+#     # Preprocess the student's input
+#     cleaned_input = preprocess_text(description)
 
-    # Vectorize the applicant's experience description
-    input_vector = tfidf_vectorizer.transform([cleaned_input])
+#     # Vectorize the applicant's experience description
+#     input_vector = tfidf_vectorizer.transform([cleaned_input])
 
-    # Function to get recommendations and their match percentages for a model
-    # recommendations = {}
+#     # Function to get recommendations and their match percentages for a model
+#     # recommendations = {}
 
-    # Initialize a list to collect recommended units
-    recommended_units = []
+#     # Initialize a list to collect recommended units
+#     recommended_units = []
 
-    # Iterate through models to get the recommendations
-    for model_name, model in trained_models.items():
-        recommendation = model.predict(input_vector)[0]
-        recommended_units.append(recommendation)
+#     # Iterate through models to get the recommendations
+#     for model_name, model in trained_models.items():
+#         recommendation = model.predict(input_vector)[0]
+#         recommended_units.append(recommendation)
 
-    return recommended_units
+#     return recommended_units
