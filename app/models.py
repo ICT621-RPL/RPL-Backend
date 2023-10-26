@@ -11,7 +11,7 @@ class Experience(db.Model):
     __table_args__ = {'extend_existing': extend_existing_config}  # Ensure table isn't recreated
 
     experience_id = db.Column(db.Integer, primary_key=True)
-    student_id = db.Column(db.Integer)
+    student_id = db.Column(db.String(250))
     application_id = db.Column(db.Integer, ForeignKey('tbl_rpl_application.application_id'), nullable=False)
     job_title = db.Column(db.String(250))
     from_month = db.Column(db.String(20))
@@ -77,14 +77,16 @@ class Recommendation(db.Model):
     recommendation_similarity = db.Column(db.Float)
     is_applied = db.Column(db.Integer, default=0)
     status_id = db.Column(db.Integer, ForeignKey('tbl_status_master.status_id'), nullable=False)
+    reason = db.Column(db.String(250))
 
-    def __init__(self, experience_id, recommendation_unit_code, unit_name, similarity, is_applied, status_id):
+    def __init__(self, experience_id, recommendation_unit_code, unit_name, similarity, is_applied, status_id, reason):
        self.experience_id = experience_id
        self.recommendation_unit_code = recommendation_unit_code
        self.is_applied = is_applied
        self.status_id = status_id
        self.recommendation_unit_name = unit_name
        self.recommendation_similarity = similarity
+       self.reason = reason
 
     def to_dict(self):
         return {
@@ -93,7 +95,8 @@ class Recommendation(db.Model):
             'recommendation_unit_code': self.recommendation_unit_code,
             'recommendation_unit_name': self.recommendation_unit_name,
             'recommendation_similarity': self.recommendation_similarity,
-            'is_applied': self.is_applied
+            'is_applied': self.is_applied,
+            'reason': self.reason
         }
 
 class RplApplication(db.Model):
@@ -102,7 +105,7 @@ class RplApplication(db.Model):
 
     application_id = db.Column(db.Integer, primary_key=True)
     application_date = db.Column(db.DateTime, default=datetime.utcnow)
-    student_id = db.Column(db.Integer)
+    student_id = db.Column(db.String(250))
 
     # Adding a relationships
     documents = relationship('ExperienceDocument', backref='experienceDocument', cascade="all, delete-orphan")

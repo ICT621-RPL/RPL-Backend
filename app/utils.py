@@ -1,11 +1,13 @@
 import re, os, smtplib
 from flask_mail import Mail
-from email.message import EmailMessage
+from email.message import EmailMessage, Message
 import nltk
 nltk.download('punkt')
 nltk.download('stopwords')
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 mail = Mail()
 
@@ -78,7 +80,7 @@ def recommendation_to_dict(recommendations):
 
 
 # Helper function to send email
-def send_email(application_id, experience_details, experience_document_paths, recommendations):
+def send_email_to_advance_standing_team(application_id):
     recipient_email = os.environ.get("TO_MAIL")
     mail_server = os.environ.get("MAIL_SERVER")
     mail_port = os.environ.get("MAIL_PORT")
@@ -101,3 +103,32 @@ def send_email(application_id, experience_details, experience_document_paths, re
     with smtplib.SMTP_SSL(mail_server, mail_port) as server:
         server.login(mail_username, mail_password)
         server.send_message(msg)
+
+def send_email_to_applicant(email_content, recipient):
+    recipient_email = check_student_id(recipient)
+    mail_server = os.environ.get("MAIL_SERVER")
+    mail_port = os.environ.get("MAIL_PORT")
+    mail_username = os.environ.get("MAIL_USERNAME")
+    mail_password = os.environ.get("MAIL_PASSWORD")
+
+    msg = MIMEMultipart()
+    msg.attach(MIMEText(email_content, 'html'))
+    msg["Subject"] = "Application Status"
+    msg["From"] = mail_username
+    msg["To"] = recipient_email
+
+    # Using SMTP_SSL for secure connection
+    with smtplib.SMTP_SSL(mail_server, mail_port) as server:
+        server.login(mail_username, mail_password)
+        server.send_message(msg)
+
+def check_student_id(student_id):
+    # Regular expression for validating an Email
+    regex = r'^\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b'
+    
+    if re.match(regex, student_id):
+        return student_id
+    elif student_id.isdigit():
+        return student_id+"@student.murdoch.edu.au"
+    else:
+        return "Invalid"

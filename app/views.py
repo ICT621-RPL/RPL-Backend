@@ -9,7 +9,7 @@ from app.models import (
     RplApplication,
     Status,
 )
-from app.utils import allowed_file, send_email, recommendation_to_dict
+from app.utils import allowed_file, send_email_to_advance_standing_team, recommendation_to_dict, send_email_to_applicant
 from app.ml import cosine_similarity_with_knn
 
 
@@ -125,6 +125,7 @@ def add_experiences():
                 recommendation.get('recommendation_similarity'),
                 1,
                 1,
+                None
             )
             db.session.add(new_recommendation)
             db.session.commit()
@@ -176,27 +177,10 @@ def upload_files():
         }
     )
 
-
 @app.route("/application", methods=["POST"])
 def submit_application():
     application_id = request.json["application_id"]
-    all_experience_documents = ExperienceDocument.query.filter_by(
-        application_id=application_id
-    ).all()
-    application = RplApplication.query.get(application_id)
-    all_experiences = Experience.query.filter_by(
-        student_id=application.student_id
-    ).all()
-
-    all_recommendations = []
-    for experience in all_experiences:
-        all_recommendations.append(
-            Recommendation.query.filter_by(experience_id=experience.experience_id)
-        )
-
-    send_email(
-        application_id, all_experiences, all_experience_documents, all_recommendations
-    )
+    send_email_to_advance_standing_team(application_id)
     return jsonify({"Message": "Application successfully submitted"}), 200
 
 
@@ -265,6 +249,7 @@ def add_recommendation():
 def change_status():
     recommendation_id = request.json["recommendation_id"]
     status_id = request.json["status_id"]
+    reason = request.json["reason"]
 
     recommendation = Recommendation.query.get(recommendation_id)
 
@@ -272,9 +257,38 @@ def change_status():
         return jsonify({"error": "Recommendation not found"}), 404
     else:
         recommendation.status_id = status_id
+        recommendation.reason = reason
         db.session.commit()
 
         return recommendation_schema.jsonify(recommendation)
+    
+@app.route("/complete-application", methods=["POST"])
+def complete_application():
+    application_id = request.json["application_id"]
+
+    try:
+        application = RplApplication.query.filter_by(application_id=application_id).first()
+
+        if not application:
+            return jsonify({'message': 'Application not found!'}), 404
+
+        # Gathering experiences
+        email_content = "<h2>Application Details</h2>"
+        for exp in application.experiences:
+            email_content += f"<p><strong>Experience:</strong> {exp.job_title} at {exp.company}</p>"
+            email_content += f"<p><strong>Following are the units and their status:</strong></p>"
+            email_content += "<ul>"
+            for rec in exp.recommendations:
+                status = Status.query.filter_by(status_id=rec.status_id).first()
+                email_content += f"<li> {rec.recommendation_unit_code}({rec.recommendation_unit_name}) - <strong>Status:</strong> {status.status_name if status else 'N/A'} - <strong>Reason:</strong> {rec.reason}</li>"
+            email_content += "</ul>"
+
+            send_email_to_applicant(email_content, application.student_id)
+
+        return jsonify({'message': 'Application successfully closed'}), 200
+
+    except Exception as e:
+        return jsonify({'message': f"An error occurred while fetching the data: {str(e)}"}), 500
 
 
 @app.route("/statuses", methods=["GET"])
