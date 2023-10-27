@@ -29,7 +29,7 @@ pip install flask flask-mail flask-cors flask_sqlalchemy flask_marshmallow marsh
 
 ### 3. Configuration:
 
-In app/__init__.py, replace username, password, and dbname with your MySQL credentials and database name.
+In .env, replace username, password, and dbname with your MySQL credentials and database name.
 
 ## Running the Application
 
