@@ -1,5 +1,5 @@
 import os
-from flask import request, jsonify, abort
+from flask import request, jsonify, abort, send_file
 from app import app, db, ma
 from werkzeug.utils import secure_filename
 from app.models import (
@@ -155,11 +155,12 @@ def upload_files():
         if allowed_file(file.filename):
             filename = secure_filename(file.filename)
             filePath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-            file.save(filePath)
+            absolute_path = os.path.abspath(filePath)
+            file.save(absolute_path)
             saved_files.append(filename)
 
             new_experience_document = ExperienceDocument(
-                application_id, filename, filePath
+                application_id, filename, absolute_path
             )
             db.session.add(new_experience_document)
         else:
@@ -296,6 +297,12 @@ def get_statues():
     all_statuses = Status.query.all()
     return statuses_schema.jsonify(all_statuses)
 
+@app.route("/get-file/<path:filepath>", methods=["GET"])
+def get_file(filepath):
+    try:
+        return send_file(filepath, as_attachment=True)
+    except Exception as e:
+        return jsonify(error=str(e)), 400
 
 @app.route("/download/<int:application_id>", methods=["GET"])
 def download_files(application_id):
