@@ -1,6 +1,13 @@
 import re, os, smtplib
 from flask_mail import Mail
-from email.message import EmailMessage
+from email.message import EmailMessage, Message
+import nltk
+nltk.download('punkt')
+nltk.download('stopwords')
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 mail = Mail()
 
@@ -11,11 +18,35 @@ def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-# Function to preprocess text
+# Helper function to preprocess text
 def preprocess_text(text):
     text = text.lower()  # Convert to lowercase
     text = re.sub(r"[^\w\s]", "", text)  # Remove punctuation
     return text
+
+# Helper function for data Preprocessing
+def clean_text(text):
+    text = re.sub(r'[^\w\s]', '', text)
+    text = text.lower()
+    text = ' '.join([word for word in text.split() if word not in stopwords.words('english')])
+    return text
+
+# Helper function for data preprocessing and feature extraction
+def process_text(text):
+    if isinstance(text, str):
+        text = re.sub(r'UNLO\d+\|\d+\|', '', text)  # Remove 'UNLO' patterns
+        text = text.lower()  # Convert to lowercase
+        text = re.sub('<[^>]+>', '', text)  # Remove HTML tags
+        text = re.sub(r'[^\w\s]', '', text)  # Remove special characters and symbols
+        stop_words = set(stopwords.words('english'))  # Set of English stopwords
+        word_tokens = word_tokenize(text)  # Tokenize the text into words
+        filtered_text = [word for word in word_tokens if word not in stop_words]  # Remove stopwords
+        # Perform stemming or lemmatization if required
+        # Join the remaining words back into a string
+        text = ' '.join(filtered_text)
+        return text
+    else:
+        return ''
 
 
 # Helper function to convert Experience Object to Dictionary
@@ -35,17 +66,21 @@ def experience_to_dict(exp):
 
 
 # Helper function to convert Experience Object to Dictionary
-def recommendation_to_dict(recommendation):
-    return {
-        "recommendation_id": recommendation.recommendation_id,
-        "experience_id": recommendation.experience_id,
-        "recommendation_unit_code": recommendation.recommendation_unit_code,
-        "is_applied": recommendation.is_applied,
-    }
+def recommendation_to_dict(recommendations):
+    recommendations_array = []
+    for unit_code, unit_name, similarity in recommendations:
+        recommendations_dict = {
+            "recommendation_unit_code": unit_code,
+            "recommendation_unit_name": unit_name,
+            "recommendation_similarity": similarity
+        }
+        recommendations_array.append(recommendations_dict)
+
+    return recommendations_array
 
 
 # Helper function to send email
-def send_email(application_id, experience_details, experience_document_paths, recommendations):
+def send_email_to_advance_standing_team(application_id):
     recipient_email = os.environ.get("TO_MAIL")
     mail_server = os.environ.get("MAIL_SERVER")
     mail_port = os.environ.get("MAIL_PORT")
@@ -64,80 +99,36 @@ def send_email(application_id, experience_details, experience_document_paths, re
     msg["From"] = mail_username
     msg["To"] = recipient_email
 
-    # experience_html = generate_experience_html(experience_details, recommendations)
-    # msg.add_alternative(experience_html, subtype="html")
+    # Using SMTP_SSL for secure connection
+    with smtplib.SMTP_SSL(mail_server, mail_port) as server:
+        server.login(mail_username, mail_password)
+        server.send_message(msg)
 
-    # for document in experience_document_paths:
-    #     document_path = (
-    #         document.file_path
-    #     )  # Change this if it's another name or a method
-    #     absolute_path = os.path.abspath(document_path)
+def send_email_to_applicant(email_content, recipient):
+    recipient_email = check_student_id(recipient)
+    mail_server = os.environ.get("MAIL_SERVER")
+    mail_port = os.environ.get("MAIL_PORT")
+    mail_username = os.environ.get("MAIL_USERNAME")
+    mail_password = os.environ.get("MAIL_PASSWORD")
 
-    #     # Determine MIME type and read the file
-    #     if absolute_path.endswith(".pdf"):
-    #         mime_type = "application/pdf"
-    #     elif absolute_path.endswith(".docx"):
-    #         mime_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    #     elif absolute_path.endswith(".doc"):
-    #         mime_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    #     else:
-    #         print(f"Unsupported file type for {absolute_path}. Skipping.")
-    #         continue
-
-    #     try:
-    #         with open(absolute_path, "rb") as fp:
-    #             file_name = os.path.basename(absolute_path)
-    #             file_content = fp.read()
-    #             msg.add_attachment(
-    #                 file_content,
-    #                 maintype=mime_type.split("/")[0],
-    #                 subtype=mime_type.split("/")[1],
-    #                 filename=file_name,
-    #             )
-    #     except Exception as e:
-    #         print(f"Error reading {absolute_path}: {e}")
+    msg = MIMEMultipart()
+    msg.attach(MIMEText(email_content, 'html'))
+    msg["Subject"] = "Application Status"
+    msg["From"] = mail_username
+    msg["To"] = recipient_email
 
     # Using SMTP_SSL for secure connection
     with smtplib.SMTP_SSL(mail_server, mail_port) as server:
         server.login(mail_username, mail_password)
         server.send_message(msg)
 
-
-# Helper function to generate HTML from experience details
-def generate_experience_html(experience_details, recommendations):
-    content = os.environ.get("MAIL_INTRO") + "<br/>"
-    for experience in experience_details:
-        content += """
-        <h2>{}</h2>
-        <ul>
-            <li>
-                <p>{} {} - {} {}</p>
-                <p>{}</p>
-                <p>{}</p>
-                <p>{}</p>
-            </li>
-        </ul>
-        """.format(
-            experience.job_title,
-            experience.from_month,
-            experience.from_year,
-            experience.to_month,
-            experience.to_year,
-            experience.company,
-            experience.country,
-            experience.description,
-        )
-
-    content += os.environ.get("MAIL_RECOMMENDATION_INTRO") + "<br/>"
-    for recommendation in recommendations:
-        content += """
-        <ul>
-            <li>
-                <p>{}</p>
-            </li>
-        </ul>
-        """.format(
-            recommendation['recommendation_unit_code']
-        )
-
-    return content
+def check_student_id(student_id):
+    # Regular expression for validating an Email
+    regex = r'^\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b'
+    
+    if re.match(regex, student_id):
+        return student_id
+    elif student_id.isdigit():
+        return student_id+"@student.murdoch.edu.au"
+    else:
+        return "Invalid"

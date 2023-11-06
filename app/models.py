@@ -11,7 +11,8 @@ class Experience(db.Model):
     __table_args__ = {'extend_existing': extend_existing_config}  # Ensure table isn't recreated
 
     experience_id = db.Column(db.Integer, primary_key=True)
-    student_id = db.Column(db.Integer)
+    student_id = db.Column(db.String(250))
+    application_id = db.Column(db.Integer, ForeignKey('tbl_rpl_application.application_id'), nullable=False)
     job_title = db.Column(db.String(250))
     from_month = db.Column(db.String(20))
     from_year = db.Column(db.String(20))
@@ -24,7 +25,7 @@ class Experience(db.Model):
     # Adding a relationships
     recommendations = relationship('Recommendation', backref='experience', cascade="all, delete-orphan")
 
-    def __init__(self, studentId, jobTitle, fromMonth, fromYear, toMonth, toYear, company, country, description):
+    def __init__(self, studentId, jobTitle, fromMonth, fromYear, toMonth, toYear, company, country, description, application_id):
         self.student_id = studentId
         self.job_title = jobTitle
         self.from_year = fromYear
@@ -34,11 +35,13 @@ class Experience(db.Model):
         self.company = company
         self.country = country
         self.description = description
+        self.application_id = application_id
 
     def to_dict(self):
         return {
             'experience_id': self.experience_id,
             'studentId': self.student_id,
+            'applicationId': self.application_id,
             'jobTitle': self.job_title,
             'fromMonth': self.from_month,
             'fromYear': self.from_year,
@@ -70,21 +73,30 @@ class Recommendation(db.Model):
     recommendation_id = db.Column(db.Integer, primary_key=True)
     experience_id = db.Column(db.Integer, ForeignKey('tbl_experience.experience_id'), nullable=False)
     recommendation_unit_code = db.Column(db.String(20))
+    recommendation_unit_name = db.Column(db.String(250))
+    recommendation_similarity = db.Column(db.Float)
     is_applied = db.Column(db.Integer, default=0)
     status_id = db.Column(db.Integer, ForeignKey('tbl_status_master.status_id'), nullable=False)
+    reason = db.Column(db.String(250))
 
-    def __init__(self, experience_id, recommendation_unit_code, is_applied, status_id):
+    def __init__(self, experience_id, recommendation_unit_code, unit_name, similarity, is_applied, status_id, reason):
        self.experience_id = experience_id
        self.recommendation_unit_code = recommendation_unit_code
        self.is_applied = is_applied
        self.status_id = status_id
+       self.recommendation_unit_name = unit_name
+       self.recommendation_similarity = similarity
+       self.reason = reason
 
     def to_dict(self):
         return {
             'recommendation_id': self.recommendation_id,
             'experience_id': self.experience_id,
             'recommendation_unit_code': self.recommendation_unit_code,
-            'is_applied': self.is_applied
+            'recommendation_unit_name': self.recommendation_unit_name,
+            'recommendation_similarity': self.recommendation_similarity,
+            'is_applied': self.is_applied,
+            'reason': self.reason
         }
 
 class RplApplication(db.Model):
@@ -93,10 +105,11 @@ class RplApplication(db.Model):
 
     application_id = db.Column(db.Integer, primary_key=True)
     application_date = db.Column(db.DateTime, default=datetime.utcnow)
-    student_id = db.Column(db.Integer)
+    student_id = db.Column(db.String(250))
 
-     # Adding a relationships
-    documents = relationship('ExperienceDocument', backref='experience', cascade="all, delete-orphan")
+    # Adding a relationships
+    documents = relationship('ExperienceDocument', backref='experienceDocument', cascade="all, delete-orphan")
+    experiences = relationship('Experience', backref='experience', cascade="all, delete-orphan")
 
     def __init__(self, application_date, student_id):
        if application_date is None:

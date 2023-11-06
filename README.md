@@ -7,7 +7,7 @@ A Flask application for performing CRUD (Create, Read, Update, Delete) operation
 ### 1. Environment Setup:
 
 ```bash
-pip install flask flask-mail flask-cors flask_sqlalchemy flask_marshmallow marshmallow-sqlalchemy mysqlclient scikit-learn python-dotenv
+pip install flask flask-mail flask-cors flask_sqlalchemy flask_marshmallow marshmallow-sqlalchemy mysqlclient scikit-learn python-dotenv nltk
 ```
 
 ### 2. Application Structure:
@@ -29,7 +29,7 @@ pip install flask flask-mail flask-cors flask_sqlalchemy flask_marshmallow marsh
 
 ### 3. Configuration:
 
-In app/__init__.py, replace username, password, and dbname with your MySQL credentials and database name.
+In .env, replace username, password, and dbname with your MySQL credentials and database name.
 
 ## Running the Application
 
